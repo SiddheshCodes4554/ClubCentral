@@ -1,0 +1,388 @@
+Build a full-stack web application called ClubCentral.
+Generate both backend API and frontend UI in one unified project.
+Use MongoDB as the only database.
+This application is used ONLY by President, Vice-President, and Core Council Members.
+Normal members do NOT have login access or dashboards.
+
+🚀 GLOBAL REQUIREMENTS (ABSOLUTE MUST)
+
+Generate backend API + frontend UI together
+
+Use MongoDB as the database
+
+Implement email/password authentication with:
+
+password hashing
+
+JWT-based session tokens
+
+Only approved core users can log in
+
+Normal members (non-core) must not have access to the app
+
+Implement role-based authorization
+
+Build clean, modern SaaS UI with sidebar, cards, tables, modals
+
+🧩 USER TYPES (ONLY THESE CAN LOG IN)
+
+President
+
+Vice-President
+
+Core Council Members (Heads)
+
+❌ No dashboards for normal members
+❌ Normal members cannot log in
+❌ Normal members only exist as entries for record-keeping
+
+🧱 DATABASE (MongoDB) – REQUIRED COLLECTIONS
+
+Create these collections:
+
+Clubs
+
+Users
+
+PendingMembers
+
+Roles
+
+Events
+
+Tasks
+
+Finance
+
+SocialPosts
+
+🔐 AUTHENTICATION & ACCESS FLOW
+PRESIDENT SIGNUP / CLUB CREATION
+
+Show “Create Club” onboarding form
+
+Fields:
+
+name, email, password
+
+club name
+
+college name
+
+logo URL
+
+description
+
+Auto-generate unique club code
+
+Add club to DB
+
+Add user as:
+
+role: President
+
+isApproved: true
+
+isPresident: true
+
+LOGIN
+
+Only approved core users can log in
+
+Unapproved applicants → show “Pending approval” message
+
+Session handled via JWT
+
+🔗 INVITE / MEMBER APPLICATION FLOW
+
+President/VP can generate an invite link using the club code.
+
+Invite link shows Member Application Form:
+
+Name
+
+Email
+
+Phone
+
+ID Number
+
+LinkedIn
+
+Portfolio/GitHub
+
+Password
+
+On submit:
+
+Data goes to PendingMembers collection
+
+Show message: “Application submitted. Await approval.”
+
+Normal members do NOT get login rights.
+
+📝 PENDING APPROVAL SYSTEM
+
+Only President/VP can access.
+
+List all pending applicants with:
+
+Name
+
+Email
+
+Phone
+
+ID
+
+LinkedIn
+
+Portfolio
+
+Actions:
+
+✔ APPROVE
+
+Move data from PendingMembers to Users
+
+Mark as approved
+
+Assign role:
+
+Council Head, or
+
+Member (record-only, no login)
+
+Only if role is President/VP/Head → allow login
+
+❌ REJECT
+
+Remove entry from PendingMembers
+
+👥 MEMBER MANAGEMENT (ADMIN-ONLY)
+
+President/VP can:
+
+View list of all approved core council members
+
+View list of normal members (record-only)
+
+Add/edit/remove core members
+
+Assign roles
+
+Designate or change Vice-President
+
+Normal members listed are only for records.
+
+🧩 ROLE SYSTEM (ADMIN-ONLY)
+
+Allow President to create custom roles like:
+
+Content Head
+
+Finance Head
+
+Event Head
+
+Each role contains a permissions JSON, stored in MongoDB.
+
+📅 EVENT MANAGEMENT
+
+Core members with permissions can:
+
+Create/edit/delete events
+
+Event fields:
+
+title
+
+description
+
+date
+
+budget
+
+status (Planning, Ongoing, Completed)
+
+Assign events to heads or core members
+
+📝 TASK MANAGEMENT
+
+Each event can have tasks:
+
+title
+
+description
+
+assigned_to
+
+due date
+
+status (Pending/In Progress/Done)
+
+Core members can update only their tasks.
+
+💰 FINANCE MODULE
+
+Finance entries include:
+
+transaction name
+
+type (income/expense)
+
+amount
+
+receipt URL
+
+status (Pending/Approved)
+
+Only President & VP can approve finance entries.
+
+📣 SOCIAL MEDIA PLANNER
+
+Core members with permissions can:
+
+Create/edit/delete social posts
+
+Post fields:
+
+caption
+
+image URL
+
+platform
+
+scheduled date
+
+status (Draft/Scheduled/Posted)
+
+⚙️ CLUB SETTINGS (PRESIDENT ONLY)
+
+Edit club name, logo, description
+
+Regenerate club code
+
+Delete club (with confirmation)
+
+🖥 FRONTEND UI REQUIREMENTS
+
+Create the following pages/screens:
+
+Authentication
+
+Login page
+
+President Signup (Create Club)
+
+Join Club via invite link
+
+Dashboards (role-based)
+
+President Dashboard
+
+Vice-President Dashboard
+
+Council Head Dashboard
+
+Admin / Core Features
+
+Members Management
+
+Pending Approvals
+
+Events
+
+Tasks
+
+Finance
+
+Social Posts
+
+Settings
+
+UI/UX Style
+
+Modern SaaS theme
+
+Sidebar navigation
+
+Clean cards and tables
+
+Role-based visibility
+
+Responsive design
+
+🧠 BACKEND API REQUIREMENTS
+
+Generate API endpoints for all CRUD operations:
+
+Auth
+
+/auth/register-president
+
+/auth/login
+
+Members
+
+/members/apply
+
+/members/approve
+
+/members/reject
+
+/members/list
+
+Roles
+
+/roles/create
+
+/roles/update
+
+/roles/list
+
+Events
+
+/events/create
+
+/events/update
+
+/events/delete
+
+/events/list
+
+Tasks
+
+/tasks/create
+
+/tasks/update
+
+/tasks/list
+
+Finance
+
+/finance/add
+
+/finance/approve
+
+/finance/list
+
+Social
+
+/social/create
+
+/social/update
+
+/social/list
+
+Settings
+
+/club/update
+
+/club/delete
+
+All endpoints must validate role permissions.
+
+🎯 GOAL
+
+Generate a complete full-stack application (backend API + frontend UI) for President, Vice-President, and Core Council Members only, using MongoDB as the database, with all dashboards, pages, CRUD logic, access control, and UI implemented in one project.
