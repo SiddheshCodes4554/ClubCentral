@@ -123,8 +123,8 @@ export default function InstitutionElections() {
             clubId: selectedClubId,
             title,
             description,
-            startTime,
-            endTime,
+            startTime: new Date(startTime as string).toISOString(),
+            endTime: new Date(endTime as string).toISOString(),
         };
 
         if (candidateMode === "select") {
