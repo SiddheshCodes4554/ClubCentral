@@ -3785,10 +3785,10 @@ Generate 5-8 tasks, 3-5 budget items, 4-6 timeline milestones, and 2-4 team sugg
     try {
       const { accessCode } = req.params;
       const { candidateId } = req.body;
-      const ip = req.ip || req.socket.remoteAddress || 'unknown';
 
-      // Simple hash of IP for privacy
-      const ipHash = createHash('sha256').update(ip).digest('hex');
+      // Cookie-based tracking
+      const cookieName = `vote_token_${accessCode}`;
+      const existingToken = req.cookies[cookieName];
 
       if (!candidateId || typeof candidateId !== 'string') {
         return res.status(400).json({ message: 'A valid candidate must be selected' });
@@ -3807,10 +3807,12 @@ Generate 5-8 tasks, 3-5 budget items, 4-6 timeline milestones, and 2-4 team sugg
         return res.status(400).json({ message: 'Voting has ended' });
       }
 
-      // Check for double voting
-      const existingVote = await storage.getElectionVoteByIp(election.id, ipHash);
-      if (existingVote) {
-        return res.status(403).json({ message: 'You have already voted in this election' });
+      // Check for double voting via cookie or DB check if token exists
+      if (existingToken) {
+        const existingVote = await storage.getElectionVoteByToken(election.id, existingToken);
+        if (existingVote) {
+          return res.status(403).json({ message: 'You have already voted in this election' });
+        }
       }
 
       const candidate = await storage.getElectionCandidate(candidateId);
@@ -3818,14 +3820,25 @@ Generate 5-8 tasks, 3-5 budget items, 4-6 timeline milestones, and 2-4 team sugg
         return res.status(400).json({ message: 'Invalid candidate selection' });
       }
 
+      // Generate new token if not exists
+      const voterToken = existingToken || randomBytes(16).toString('hex');
+
       // Record vote
       await storage.createElectionVote({
         electionId: election.id,
-        ipHash,
+        voterToken,
       } as any);
 
       // Increment candidate count
       await storage.incrementCandidateVote(candidateId);
+
+      // Set long-lived cookie (1 year)
+      res.cookie(cookieName, voterToken, {
+        maxAge: 365 * 24 * 60 * 60 * 1000,
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax',
+      });
 
       res.json({ message: 'Vote cast successfully' });
     } catch (error: any) {

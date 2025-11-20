@@ -17,6 +17,18 @@ import { Label } from "@/components/ui/label";
 import { Loader2, CheckCircle2, AlertCircle } from "lucide-react";
 import { format } from "date-fns";
 
+import { Election } from "@shared/schema";
+
+interface PublicElection extends Election {
+    clubName: string;
+    institutionName: string;
+    candidates: {
+        id: string;
+        name: string;
+        role: string | null;
+    }[];
+}
+
 export default function VotePage() {
     const [, params] = useRoute("/vote/:accessCode");
     const accessCode = params?.accessCode;
@@ -24,7 +36,7 @@ export default function VotePage() {
     const [selectedCandidate, setSelectedCandidate] = useState<string>("");
     const [hasVoted, setHasVoted] = useState(false);
 
-    const { data: election, isLoading, error } = useQuery({
+    const { data: election, isLoading, error } = useQuery<PublicElection>({
         queryKey: ["/api/elections", accessCode],
         enabled: !!accessCode,
     });
@@ -227,8 +239,8 @@ export default function VotePage() {
                     </CardFooter>
                 </Card>
 
-                <p className="text-center text-xs text-muted-foreground">
-                    Your vote is anonymous. IP tracking is used to prevent duplicate voting.
+                <p className="text-sm text-muted-foreground mt-4 text-center">
+                    Browser cookies are used to prevent duplicate voting.
                 </p>
             </div>
         </div>

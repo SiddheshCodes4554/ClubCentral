@@ -489,7 +489,7 @@ export const electionCandidates = pgTable("election_candidates", {
 export const electionVotes = pgTable("election_votes", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   electionId: varchar("election_id").notNull().references(() => elections.id, { onDelete: "cascade" }),
-  ipHash: text("ip_hash").notNull(),
+  voterToken: text("voter_token").notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 

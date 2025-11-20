@@ -162,7 +162,7 @@ export interface IStorage {
   getElectionCandidate(id: string): Promise<ElectionCandidate | undefined>;
   getElectionCandidates(electionId: string): Promise<ElectionCandidate[]>;
   createElectionVote(vote: InsertElectionVote): Promise<ElectionVote>;
-  getElectionVoteByIp(electionId: string, ipHash: string): Promise<ElectionVote | undefined>;
+  getElectionVoteByToken(electionId: string, voterToken: string): Promise<ElectionVote | undefined>;
   incrementCandidateVote(candidateId: string): Promise<void>;
   deleteElection(id: string): Promise<void>;
 }
@@ -658,11 +658,11 @@ export class DatabaseStorage implements IStorage {
     return newVote;
   }
 
-  async getElectionVoteByIp(electionId: string, ipHash: string): Promise<ElectionVote | undefined> {
+  async getElectionVoteByToken(electionId: string, voterToken: string): Promise<ElectionVote | undefined> {
     const [vote] = await db
       .select()
       .from(electionVotes)
-      .where(and(eq(electionVotes.electionId, electionId), eq(electionVotes.ipHash, ipHash)));
+      .where(and(eq(electionVotes.electionId, electionId), eq(electionVotes.voterToken, voterToken)));
     return vote || undefined;
   }
 
