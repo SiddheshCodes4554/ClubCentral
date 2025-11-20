@@ -9,5 +9,14 @@ if (!process.env.DATABASE_URL) {
   );
 }
 
+console.log("Initializing database connection...");
+
 export const pool = new Pool({ connectionString: process.env.DATABASE_URL });
 export const db = drizzle({ client: pool, schema });
+
+try {
+  console.log("Database initialized successfully");
+} catch (err) {
+  console.error("Failed to initialize database:", err);
+  throw err;
+}
