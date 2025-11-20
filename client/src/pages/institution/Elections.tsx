@@ -348,46 +348,70 @@ export default function InstitutionElections() {
                 </div>
             ) : (
                 <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-                    {elections?.map((election: any) => (
-                        <Card key={election.id}>
-                            <CardHeader>
-                                <div className="flex items-center justify-between">
-                                    <Badge variant={election.status === 'active' ? 'default' : 'secondary'}>
-                                        {election.status}
-                                    </Badge>
-                                    <div className="flex items-center gap-2">
-                                        <DeleteElectionButton electionId={election.id} electionTitle={election.title} />
-                                        <Vote className="h-4 w-4 text-muted-foreground" />
-                                    </div>
-                                </div>
-                                <CardTitle className="mt-2">{election.title}</CardTitle>
-                                <CardDescription>{election.clubName}</CardDescription>
-                            </CardHeader>
-                            <CardContent>
-                                <div className="space-y-4">
-                                    <div className="text-sm text-muted-foreground">
-                                        <p>Starts: {format(new Date(election.startTime), "PPp")}</p>
-                                        <p>Ends: {format(new Date(election.endTime), "PPp")}</p>
-                                    </div>
+                    {elections?.map((election: any) => {
+                        const now = new Date();
+                        const startTime = new Date(election.startTime);
+                        const endTime = new Date(election.endTime);
 
-                                    <div className="flex gap-2">
-                                        <Button variant="outline" className="flex-1" onClick={() => copyLink(election.accessCode)}>
-                                            <Copy className="mr-2 h-4 w-4" />
-                                            Copy Link
-                                        </Button>
-                                        <Button variant="secondary" className="flex-1" asChild>
-                                            <a href={`/vote/${election.accessCode}`} target="_blank" rel="noopener noreferrer">
-                                                <ExternalLink className="mr-2 h-4 w-4" />
-                                                View
-                                            </a>
-                                        </Button>
-                                    </div>
+                        let status: 'scheduled' | 'ongoing' | 'ended';
+                        let statusVariant: 'default' | 'secondary' | 'destructive';
+                        let statusLabel: string;
 
-                                    <ResultsDialog electionId={election.id} />
-                                </div>
-                            </CardContent>
-                        </Card>
-                    ))}
+                        if (now < startTime) {
+                            status = 'scheduled';
+                            statusVariant = 'secondary';
+                            statusLabel = 'Scheduled';
+                        } else if (now >= startTime && now <= endTime) {
+                            status = 'ongoing';
+                            statusVariant = 'default';
+                            statusLabel = 'Ongoing';
+                        } else {
+                            status = 'ended';
+                            statusVariant = 'destructive';
+                            statusLabel = 'Ended';
+                        }
+
+                        return (
+                            <Card key={election.id}>
+                                <CardHeader>
+                                    <div className="flex items-center justify-between">
+                                        <Badge variant={statusVariant}>
+                                            {statusLabel}
+                                        </Badge>
+                                        <div className="flex items-center gap-2">
+                                            <DeleteElectionButton electionId={election.id} electionTitle={election.title} />
+                                            <Vote className="h-4 w-4 text-muted-foreground" />
+                                        </div>
+                                    </div>
+                                    <CardTitle className="mt-2">{election.title}</CardTitle>
+                                    <CardDescription>{election.clubName}</CardDescription>
+                                </CardHeader>
+                                <CardContent>
+                                    <div className="space-y-4">
+                                        <div className="text-sm text-muted-foreground">
+                                            <p>Starts: {format(startTime, "PPp")}</p>
+                                            <p>Ends: {format(endTime, "PPp")}</p>
+                                        </div>
+
+                                        <div className="flex gap-2">
+                                            <Button variant="outline" className="flex-1" onClick={() => copyLink(election.accessCode)}>
+                                                <Copy className="mr-2 h-4 w-4" />
+                                                Copy Link
+                                            </Button>
+                                            <Button variant="secondary" className="flex-1" asChild>
+                                                <a href={`/vote/${election.accessCode}`} target="_blank" rel="noopener noreferrer">
+                                                    <ExternalLink className="mr-2 h-4 w-4" />
+                                                    View
+                                                </a>
+                                            </Button>
+                                        </div>
+
+                                        <ResultsDialog electionId={election.id} status={status} />
+                                    </div>
+                                </CardContent>
+                            </Card>
+                        );
+                    })}
                     {(!elections || elections.length === 0) && (
                         <div className="col-span-full text-center py-12 text-muted-foreground">
                             No elections found. Create one to get started.
@@ -399,12 +423,16 @@ export default function InstitutionElections() {
     );
 }
 
-function ResultsDialog({ electionId }: { electionId: string }) {
+function ResultsDialog({ electionId, status }: { electionId: string; status: 'scheduled' | 'ongoing' | 'ended' }) {
     const [isOpen, setIsOpen] = useState(false);
     const { data, isLoading } = useQuery<any>({
         queryKey: ["/api/institution/elections", electionId, "results"],
         enabled: isOpen,
     });
+
+    const sortedResults = data?.results?.sort((a: any, b: any) => b.voteCount - a.voteCount) || [];
+    const winner = sortedResults[0];
+    const hasVotes = sortedResults.some((r: any) => r.voteCount > 0);
 
     return (
         <Dialog open={isOpen} onOpenChange={setIsOpen}>
@@ -414,9 +442,12 @@ function ResultsDialog({ electionId }: { electionId: string }) {
                     View Results
                 </Button>
             </DialogTrigger>
-            <DialogContent>
+            <DialogContent className="max-w-md">
                 <DialogHeader>
                     <DialogTitle>Election Results</DialogTitle>
+                    <DialogDescription>
+                        {status === 'ended' ? 'Final results' : status === 'ongoing' ? 'Live results (voting in progress)' : 'Voting has not started yet'}
+                    </DialogDescription>
                 </DialogHeader>
                 {isLoading ? (
                     <div className="flex justify-center p-8">
@@ -424,22 +455,60 @@ function ResultsDialog({ electionId }: { electionId: string }) {
                     </div>
                 ) : (
                     <div className="space-y-4">
-                        {data?.results.sort((a: any, b: any) => b.voteCount - a.voteCount).map((result: any, index: number) => (
-                            <div key={result.candidateId} className="flex items-center justify-between p-4 border rounded-lg bg-card">
-                                <div className="flex items-center gap-4">
-                                    <div className={`flex items-center justify-center w-8 h-8 rounded-full font-bold ${index === 0 ? "bg-yellow-100 text-yellow-700" :
-                                        index === 1 ? "bg-gray-100 text-gray-700" :
-                                            index === 2 ? "bg-orange-100 text-orange-700" : "bg-slate-100 text-slate-700"
-                                        }`}>
-                                        {index + 1}
-                                    </div>
-                                    <span className="font-medium">{result.name}</span>
+                        {/* Winner Display - Only show if election ended and has votes */}
+                        {status === 'ended' && winner && hasVotes && (
+                            <div className="bg-gradient-to-r from-yellow-50 to-amber-50 border-2 border-yellow-400 rounded-lg p-6 mb-4">
+                                <div className="flex items-center justify-center gap-3 mb-3">
+                                    <Trophy className="h-8 w-8 text-yellow-600" />
+                                    <h3 className="text-2xl font-bold text-yellow-900">Winner</h3>
+                                    <Trophy className="h-8 w-8 text-yellow-600" />
                                 </div>
-                                <Badge variant="secondary" className="text-lg px-3">
-                                    {result.voteCount}
-                                </Badge>
+                                <div className="text-center">
+                                    <p className="text-3xl font-bold text-yellow-900 mb-2">{winner.name}</p>
+                                    <Badge className="bg-yellow-600 text-white text-lg px-4 py-1">
+                                        {winner.voteCount} {winner.voteCount === 1 ? 'vote' : 'votes'}
+                                    </Badge>
+                                </div>
                             </div>
-                        ))}
+                        )}
+
+                        {/* All Results */}
+                        <div className="space-y-3">
+                            {sortedResults.map((result: any, index: number) => {
+                                const isWinner = status === 'ended' && index === 0 && hasVotes;
+
+                                return (
+                                    <div
+                                        key={result.candidateId}
+                                        className={`flex items-center justify-between p-4 border rounded-lg ${isWinner ? 'bg-yellow-50 border-yellow-300' : 'bg-card'
+                                            }`}
+                                    >
+                                        <div className="flex items-center gap-4">
+                                            <div className={`flex items-center justify-center w-8 h-8 rounded-full font-bold ${index === 0 ? "bg-yellow-100 text-yellow-700" :
+                                                    index === 1 ? "bg-gray-100 text-gray-700" :
+                                                        index === 2 ? "bg-orange-100 text-orange-700" : "bg-slate-100 text-slate-700"
+                                                }`}>
+                                                {index + 1}
+                                            </div>
+                                            <div>
+                                                <span className="font-medium">{result.name}</span>
+                                                {isWinner && (
+                                                    <Badge variant="outline" className="ml-2 bg-yellow-100 text-yellow-700 border-yellow-400">
+                                                        WINNER
+                                                    </Badge>
+                                                )}
+                                            </div>
+                                        </div>
+                                        <Badge variant="secondary" className="text-lg px-3">
+                                            {result.voteCount}
+                                        </Badge>
+                                    </div>
+                                );
+                            })}
+                            {sortedResults.length === 0 && (
+                                <p className="text-center text-muted-foreground py-8">No results available yet.</p>
+                            )}
+                        </div>
                     </div>
                 )}
             </DialogContent>
