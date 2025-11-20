@@ -58,7 +58,8 @@ export default function InstitutionElections() {
     const [candidateInput, setCandidateInput] = useState("");
 
     const { data: elections, isLoading: isLoadingElections } = useQuery<any>({
-        queryKey: ["/api/institution/elections", (user as any)?.institutionId],
+        queryKey: ["/api/institution/elections"],
+        enabled: !!(user as any)?.institutionId,
     });
 
     const { data: clubsResponse } = useQuery<any>({
