@@ -5,9 +5,11 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
-import { Building2, CheckCircle } from 'lucide-react';
+import { CheckCircle } from 'lucide-react';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { apiRequest } from '@/lib/queryClient';
+import type { MessageResponse } from '@/types/api';
+import type { Club } from '@shared/schema';
 
 export default function Apply() {
   const [, params] = useRoute('/apply/:clubCode');
@@ -24,14 +26,18 @@ export default function Apply() {
   const [linkedin, setLinkedin] = useState('');
   const [portfolio, setPortfolio] = useState('');
 
-  const { data: club, isLoading } = useQuery({
+  const { data: club, isLoading } = useQuery<Club | null>({
     queryKey: ['/api/clubs/verify', clubCode],
     enabled: !!clubCode,
+    queryFn: async () => {
+      if (!clubCode) return null;
+      return await apiRequest<Club>('GET', `/api/clubs/verify/${clubCode}`);
+    },
   });
 
   const applyMutation = useMutation({
     mutationFn: async (data: any) => {
-      return await apiRequest('POST', '/api/members/apply', data);
+      return await apiRequest<MessageResponse>('POST', '/api/members/apply', data);
     },
     onSuccess: () => {
       setSubmitted(true);
@@ -119,9 +125,11 @@ export default function Apply() {
         <Card>
           <CardHeader>
             <div className="flex items-center gap-4 mb-4">
-              <div className="h-16 w-16 rounded-xl bg-primary flex items-center justify-center">
-                <Building2 className="h-10 w-10 text-primary-foreground" />
-              </div>
+              <img 
+                src="/Logo.png" 
+                alt="Club Central" 
+                className="h-16 w-auto object-contain"
+              />
               <div>
                 <CardTitle className="text-2xl">Join {club?.name}</CardTitle>
                 <CardDescription>{club?.collegeName}</CardDescription>

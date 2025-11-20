@@ -7,12 +7,22 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
-import { Plus, Calendar, Image as ImageIcon } from 'lucide-react';
+import { Plus, Calendar, Pencil, Trash2 } from 'lucide-react';
 import { StatusBadge } from '@/components/StatusBadge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
+import type { SocialPost } from '@shared/schema';
+
+type CreateSocialPostInput = {
+  caption: string;
+  imageUrl?: string;
+  platform: SocialPost['platform'];
+  scheduledDate?: string;
+  status: SocialPost['status'];
+};
 
 export default function Social() {
   const [open, setOpen] = useState(false);
@@ -21,25 +31,61 @@ export default function Social() {
   const [platform, setPlatform] = useState('Instagram');
   const [scheduledDate, setScheduledDate] = useState('');
   const [status, setStatus] = useState('Draft');
+  const [editingPost, setEditingPost] = useState<SocialPost | null>(null);
   const { toast } = useToast();
 
-  const { data: posts, isLoading } = useQuery({
+  const { data: posts = [], isLoading } = useQuery<SocialPost[]>({
     queryKey: ['/api/social'],
   });
 
   const createPostMutation = useMutation({
-    mutationFn: async (data: any) => {
-      return await apiRequest('POST', '/api/social', data);
+    mutationFn: async (data: CreateSocialPostInput) => {
+      return await apiRequest<SocialPost>('POST', '/api/social', data);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/social'] });
       queryClient.invalidateQueries({ queryKey: ['/api/dashboard/stats'] });
       setOpen(false);
       resetForm();
+      setEditingPost(null);
       toast({
         title: 'Post created',
         description: 'The social media post has been created successfully.',
       });
+    },
+    onError: (error: any) => {
+      toast({ title: 'Unable to create post', description: error.message, variant: 'destructive' });
+    },
+  });
+
+  const updatePostMutation = useMutation({
+    mutationFn: async ({ id, data }: { id: string; data: CreateSocialPostInput }) => {
+      return await apiRequest<SocialPost>('PATCH', `/api/social/${id}`, data);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/social'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/dashboard/stats'] });
+      setOpen(false);
+      resetForm();
+      setEditingPost(null);
+      toast({ title: 'Post updated' });
+    },
+    onError: (error: any) => {
+      toast({ title: 'Unable to update post', description: error.message, variant: 'destructive' });
+    },
+  });
+
+  const deletePostMutation = useMutation({
+    mutationFn: async (id: string) => {
+      return await apiRequest<{ message: string }>('DELETE', `/api/social/${id}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/social'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/dashboard/stats'] });
+      toast({ title: 'Post deleted' });
+    },
+    onError: (error: any) => {
+      toast({ title: 'Unable to delete post', description: error.message, variant: 'destructive' });
     },
   });
 
@@ -53,13 +99,41 @@ export default function Social() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    createPostMutation.mutate({
+    const payload: CreateSocialPostInput = {
       caption,
       imageUrl: imageUrl || undefined,
       platform,
       scheduledDate: scheduledDate ? new Date(scheduledDate).toISOString() : undefined,
       status,
-    });
+    };
+
+    if (editingPost) {
+      updatePostMutation.mutate({ id: editingPost.id, data: payload });
+    } else {
+      createPostMutation.mutate(payload);
+    }
+  };
+
+  const openCreateDialog = () => {
+    resetForm();
+    setEditingPost(null);
+    setOpen(true);
+  };
+
+  const openEditDialog = (post: SocialPost) => {
+    setEditingPost(post);
+    setCaption(post.caption);
+    setImageUrl(post.imageUrl ?? '');
+    setPlatform(post.platform);
+    setStatus(post.status);
+    setScheduledDate(post.scheduledDate ? new Date(post.scheduledDate).toISOString().slice(0, 16) : '');
+    setOpen(true);
+  };
+
+  const closeDialog = () => {
+    setOpen(false);
+    setEditingPost(null);
+    resetForm();
   };
 
   if (isLoading) {
@@ -79,16 +153,22 @@ export default function Social() {
     <div className="p-8">
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-3xl font-semibold">Social Media Planner</h1>
-        <Dialog open={open} onOpenChange={setOpen}>
+        <Dialog open={open} onOpenChange={(value) => {
+          if (!value) {
+            closeDialog();
+          } else {
+            setOpen(true);
+          }
+        }}>
           <DialogTrigger asChild>
-            <Button data-testid="button-create-post">
+            <Button onClick={openCreateDialog} data-testid="button-create-post">
               <Plus className="h-4 w-4 mr-2" />
               Create Post
             </Button>
           </DialogTrigger>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>Create Social Media Post</DialogTitle>
+              <DialogTitle>{editingPost ? 'Edit Social Media Post' : 'Create Social Media Post'}</DialogTitle>
             </DialogHeader>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-2">
@@ -157,8 +237,14 @@ export default function Social() {
                 />
               </div>
 
-              <Button type="submit" className="w-full" disabled={createPostMutation.isPending} data-testid="button-submit-post">
-                {createPostMutation.isPending ? 'Creating...' : 'Create Post'}
+              <Button type="submit" className="w-full" disabled={createPostMutation.isPending || updatePostMutation.isPending} data-testid="button-submit-post">
+                {editingPost
+                  ? updatePostMutation.isPending
+                    ? 'Saving...'
+                    : 'Save Changes'
+                  : createPostMutation.isPending
+                  ? 'Creating...'
+                  : 'Create Post'}
               </Button>
             </form>
           </DialogContent>
@@ -166,20 +252,47 @@ export default function Social() {
       </div>
 
       <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {!posts || posts.length === 0 ? (
+        {posts.length === 0 ? (
           <Card className="col-span-full">
             <CardContent className="py-12 text-center">
               <p className="text-muted-foreground">No social media posts yet</p>
             </CardContent>
           </Card>
         ) : (
-          posts.map((post: any) => (
+          posts.map((post) => (
             <Card key={post.id} className="hover-elevate" data-testid={`card-post-${post.id}`}>
               <CardHeader>
-                <div className="flex items-start justify-between">
+                <div className="flex items-start justify-between gap-3">
                   <div className="flex items-center gap-2">
                     <Badge variant="outline">{post.platform}</Badge>
                     <StatusBadge status={post.status} />
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Button variant="outline" size="sm" className="gap-2" onClick={() => openEditDialog(post)}>
+                      <Pencil className="h-4 w-4" /> Edit
+                    </Button>
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button variant="outline" size="sm" className="gap-2 text-destructive border-destructive">
+                          <Trash2 className="h-4 w-4" /> Delete
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Delete this post?</AlertDialogTitle>
+                          <AlertDialogDescription>This action cannot be undone.</AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Cancel</AlertDialogCancel>
+                          <AlertDialogAction
+                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                            onClick={() => deletePostMutation.mutate(post.id)}
+                          >
+                            Delete
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
                   </div>
                 </div>
               </CardHeader>

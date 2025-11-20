@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { queryClient, apiRequest } from '@/lib/queryClient';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -7,14 +7,16 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
-import { Copy, RefreshCw, Trash2 } from 'lucide-react';
+import { Copy, RefreshCw, Trash2, LinkIcon } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
+import type { Club } from '@shared/schema';
+import type { MessageResponse } from '@/types/api';
 
 export default function Settings() {
   const { toast } = useToast();
 
-  const { data: club, isLoading } = useQuery({
+  const { data: club, isLoading } = useQuery<Club>({
     queryKey: ['/api/club'],
   });
 
@@ -22,12 +24,24 @@ export default function Settings() {
   const [logoUrl, setLogoUrl] = useState('');
   const [description, setDescription] = useState('');
 
+  const inviteLink = useMemo(() => {
+    if (typeof window === 'undefined' || !club) return '';
+    return `${window.location.origin}/apply/${club.clubCode}`;
+  }, [club]);
+
+  useEffect(() => {
+    if (!club) return;
+    setName(club.name ?? '');
+    setLogoUrl(club.logoUrl ?? '');
+    setDescription(club.description ?? '');
+  }, [club]);
+
   const updateClubMutation = useMutation({
-    mutationFn: async (data: any) => {
-      return await apiRequest('PATCH', '/api/club', data);
+    mutationFn: async (data: Partial<Pick<Club, 'name' | 'logoUrl' | 'description'>>) => {
+      return await apiRequest<Club>('PATCH', '/api/club', data);
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/club'] });
+    onSuccess: (updatedClub) => {
+      queryClient.setQueryData(['/api/club'], updatedClub);
       toast({
         title: 'Settings updated',
         description: 'Club settings have been updated successfully.',
@@ -37,10 +51,10 @@ export default function Settings() {
 
   const regenerateCodeMutation = useMutation({
     mutationFn: async () => {
-      return await apiRequest('POST', '/api/club/regenerate-code', {});
+      return await apiRequest<Club>('POST', '/api/club/regenerate-code', {});
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/club'] });
+    onSuccess: (updatedClub) => {
+      queryClient.setQueryData(['/api/club'], updatedClub);
       toast({
         title: 'Code regenerated',
         description: 'A new club code has been generated.',
@@ -50,7 +64,7 @@ export default function Settings() {
 
   const deleteClubMutation = useMutation({
     mutationFn: async () => {
-      return await apiRequest('DELETE', '/api/club', {});
+      return await apiRequest<MessageResponse>('DELETE', '/api/club', {});
     },
     onSuccess: () => {
       localStorage.clear();
@@ -68,11 +82,21 @@ export default function Settings() {
   };
 
   const copyInviteLink = () => {
-    const link = `${window.location.origin}/apply/${club?.clubCode}`;
+    if (!club || typeof window === 'undefined') return;
+    const link = `${window.location.origin}/apply/${club.clubCode}`;
     navigator.clipboard.writeText(link);
     toast({
       title: 'Link copied!',
       description: 'Invite link has been copied to clipboard.',
+    });
+  };
+
+  const copyInviteCode = () => {
+    if (!club?.clubCode || typeof window === 'undefined') return;
+    navigator.clipboard.writeText(club.clubCode);
+    toast({
+      title: 'Code copied!',
+      description: 'Share this code with members who prefer typing it manually.',
     });
   };
 
@@ -100,10 +124,9 @@ export default function Settings() {
                 <Label htmlFor="name">Club Name</Label>
                 <Input
                   id="name"
-                  defaultValue={club?.name}
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  placeholder={club?.name}
+                  placeholder={club?.name || 'Club name'}
                   data-testid="input-club-name"
                 />
               </div>
@@ -113,7 +136,6 @@ export default function Settings() {
                 <Input
                   id="logoUrl"
                   type="url"
-                  defaultValue={club?.logoUrl}
                   value={logoUrl}
                   onChange={(e) => setLogoUrl(e.target.value)}
                   placeholder={club?.logoUrl || 'https://...'}
@@ -125,7 +147,6 @@ export default function Settings() {
                 <Label htmlFor="description">Description</Label>
                 <Textarea
                   id="description"
-                  defaultValue={club?.description}
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
                   placeholder={club?.description || 'Tell us about your club...'}
@@ -146,22 +167,39 @@ export default function Settings() {
             <CardTitle>Invite Members</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div>
-              <Label>Club Code</Label>
-              <div className="flex gap-3 mt-2">
+            <div className="space-y-2">
+              <Label>Invite Link</Label>
+              <div className="flex gap-3">
                 <Input
-                  value={club?.clubCode}
+                  value={inviteLink}
                   readOnly
                   className="font-mono"
-                  data-testid="text-club-code"
+                  data-testid="text-invite-link"
                 />
                 <Button
                   variant="outline"
                   onClick={copyInviteLink}
                   data-testid="button-copy-invite-link"
                 >
-                  <Copy className="h-4 w-4 mr-2" />
-                  Copy Link
+                  <LinkIcon className="h-4 w-4 mr-2" /> Copy Link
+                </Button>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Club Code</Label>
+              <div className="flex gap-3">
+                <Input
+                  value={club?.clubCode ?? ''}
+                  readOnly
+                  className="font-mono"
+                  data-testid="text-club-code"
+                />
+                <Button
+                  variant="outline"
+                  onClick={copyInviteCode}
+                >
+                  <Copy className="h-4 w-4 mr-2" /> Copy Code
                 </Button>
               </div>
             </div>
@@ -173,7 +211,7 @@ export default function Settings() {
               data-testid="button-regenerate-code"
             >
               <RefreshCw className="h-4 w-4 mr-2" />
-              Regenerate Code
+              {regenerateCodeMutation.isPending ? 'Regenerating...' : 'Regenerate Code'}
             </Button>
 
             <p className="text-sm text-muted-foreground">

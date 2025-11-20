@@ -1,45 +1,109 @@
 import { QueryClient, QueryFunction } from "@tanstack/react-query";
 
+const getAuthToken = () =>
+  typeof window === "undefined" ? null : localStorage.getItem("auth_token");
+
+const buildHeaders = (hasBody: boolean): HeadersInit => {
+  const headers: Record<string, string> = {};
+
+  if (hasBody) {
+    headers["Content-Type"] = "application/json";
+  }
+
+  const token = getAuthToken();
+  if (token) {
+    headers["Authorization"] = `Bearer ${token}`;
+  }
+
+  return headers;
+};
+
 async function throwIfResNotOk(res: Response) {
   if (!res.ok) {
-    const text = (await res.text()) || res.statusText;
-    throw new Error(`${res.status}: ${text}`);
+    let errorMessage = res.statusText || `HTTP ${res.status}`;
+
+    try {
+      const cloned = res.clone();
+      const contentType = cloned.headers.get("content-type") ?? "";
+
+      if (contentType.includes("application/json")) {
+        const body = await cloned.json();
+        if (body && typeof body === "object") {
+          if (typeof (body as { message?: unknown }).message === "string") {
+            errorMessage = (body as { message: string }).message;
+          } else {
+            errorMessage = JSON.stringify(body);
+          }
+        }
+      } else {
+        const text = await cloned.text();
+        if (text) {
+          errorMessage = text;
+        }
+      }
+    } catch (_error) {
+      // ignore parsing errors and fall back to the default message
+    }
+
+    throw new Error(errorMessage || `HTTP ${res.status}`);
   }
 }
 
-export async function apiRequest(
+export async function apiRequest<T = unknown>(
   method: string,
   url: string,
   data?: unknown | undefined,
-): Promise<Response> {
+): Promise<T> {
   const res = await fetch(url, {
     method,
-    headers: data ? { "Content-Type": "application/json" } : {},
-    body: data ? JSON.stringify(data) : undefined,
+    headers: buildHeaders(data !== undefined),
+    body: data !== undefined ? JSON.stringify(data) : undefined,
     credentials: "include",
   });
 
   await throwIfResNotOk(res);
-  return res;
+
+  const contentLength = res.headers.get("content-length");
+  if (res.status === 204 || contentLength === "0") {
+    return undefined as T;
+  }
+
+  const contentType = res.headers.get("content-type") ?? "";
+  if (contentType.includes("application/json")) {
+    return (await res.json()) as T;
+  }
+
+  const text = await res.text();
+  return text as unknown as T;
 }
 
 type UnauthorizedBehavior = "returnNull" | "throw";
-export const getQueryFn: <T>(options: {
-  on401: UnauthorizedBehavior;
-}) => QueryFunction<T> =
-  ({ on401: unauthorizedBehavior }) =>
-  async ({ queryKey }) => {
+export function getQueryFn<T>({ on401: unauthorizedBehavior }: { on401: UnauthorizedBehavior }): QueryFunction<T> {
+  return async ({ queryKey }) => {
     const res = await fetch(queryKey.join("/") as string, {
       credentials: "include",
+      headers: buildHeaders(false),
     });
 
     if (unauthorizedBehavior === "returnNull" && res.status === 401) {
-      return null;
+      return null as T;
     }
 
     await throwIfResNotOk(res);
-    return await res.json();
+
+    if (res.status === 204) {
+      return undefined as T;
+    }
+
+    const contentType = res.headers.get("content-type") ?? "";
+    if (contentType.includes("application/json")) {
+      return (await res.json()) as T;
+    }
+
+    const text = await res.text();
+    return text as unknown as T;
   };
+}
 
 export const queryClient = new QueryClient({
   defaultOptions: {

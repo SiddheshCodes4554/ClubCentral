@@ -10,11 +10,29 @@ interface ProtectedRouteProps {
 export function ProtectedRoute({ children, requiredRoles }: ProtectedRouteProps) {
   const { isAuthenticated, user } = useAuth();
 
-  if (!isAuthenticated) {
+  if (!isAuthenticated || !user) {
     return <Redirect to="/login" />;
   }
 
-  if (requiredRoles && user && !requiredRoles.includes(user.role)) {
+  if (user.kind !== 'club') {
+    return <Redirect to="/institution/dashboard" />;
+  }
+
+  if (requiredRoles && !requiredRoles.includes(user.role)) {
+    return <Redirect to="/dashboard" />;
+  }
+
+  return <>{children}</>;
+}
+
+export function InstitutionProtectedRoute({ children }: { children: ReactNode }) {
+  const { isAuthenticated, user } = useAuth();
+
+  if (!isAuthenticated || !user) {
+    return <Redirect to="/login" />;
+  }
+
+  if (user.kind !== 'institution') {
     return <Redirect to="/dashboard" />;
   }
 

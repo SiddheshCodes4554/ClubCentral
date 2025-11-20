@@ -7,12 +7,24 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
-import { Plus, Calendar as CalendarIcon, DollarSign, User } from 'lucide-react';
+import { Plus, Calendar as CalendarIcon, DollarSign, Pencil, Trash2, RefreshCw, Sparkles } from 'lucide-react';
 import { StatusBadge } from '@/components/StatusBadge';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Badge } from '@/components/ui/badge';
+import { AIAssistant } from '@/components/AIAssistant';
+import { EventAITaskGenerator } from '@/components/EventAITaskGenerator';
+import type { Event as ClubEvent, Task as ClubTask } from '@shared/schema';
+import type { AITask } from '@/types/ai';
+
+type CreateEventInput = {
+  title: string;
+  description?: string;
+  date: string;
+  budget?: number;
+  status: ClubEvent['status'];
+};
 
 export default function Events() {
   const [open, setOpen] = useState(false);
@@ -21,19 +33,107 @@ export default function Events() {
   const [date, setDate] = useState('');
   const [budget, setBudget] = useState('');
   const [status, setStatus] = useState('Planning');
+  const [editingEvent, setEditingEvent] = useState<ClubEvent | null>(null);
+
   const { toast } = useToast();
 
-  const { data: events, isLoading } = useQuery({
+  const { data: events = [], isLoading } = useQuery<ClubEvent[]>({
     queryKey: ['/api/events'],
   });
 
-  const { data: members } = useQuery({
-    queryKey: ['/api/members'],
+  const { data: teams = [] } = useQuery<any>({
+    queryKey: ['/api/teams'],
   });
 
+  const createTaskFromAI = useMutation({
+    mutationFn: async ({ eventId, task }: { eventId: string; task: AITask }) => {
+      // Find team by name if possible
+      let teamId: string | undefined;
+      if (task.assignedTo && teams?.teams) {
+        const matchingTeam = teams.teams.find((t: any) => 
+          t.name.toLowerCase().includes(task.assignedTo.toLowerCase()) ||
+          task.assignedTo.toLowerCase().includes(t.name.toLowerCase())
+        );
+        if (matchingTeam) {
+          teamId = matchingTeam.id;
+        }
+      }
+
+      // Parse due date
+      let dueDate: string | undefined;
+      if (task.dueDate) {
+        try {
+          const parsed = new Date(task.dueDate);
+          if (!isNaN(parsed.getTime())) {
+            dueDate = parsed.toISOString();
+          }
+        } catch (e) {
+          // Ignore invalid dates
+        }
+      }
+
+      return await apiRequest<ClubTask>('POST', '/api/tasks', {
+        title: task.title,
+        description: task.description,
+        eventId,
+        teamId,
+        dueDate,
+        status: 'Pending',
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/tasks'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/dashboard/stats'] });
+    },
+  });
+
+  const insertTasksForEvent = async (eventId: string, tasks: AITask[]) => {
+    for (const task of tasks) {
+      await createTaskFromAI.mutateAsync({ eventId, task });
+    }
+  };
+
+  const handleAITasksInsert = async (tasks: AITask[]) => {
+    if (!editingEvent && events.length > 0) {
+      // If no event is being edited, use the first event or show a message
+      toast({
+        title: 'Select an event',
+        description: 'Please create or select an event first to add tasks.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    const targetEventId = editingEvent?.id || events[0]?.id;
+    if (!targetEventId) {
+      toast({
+        title: 'No event available',
+        description: 'Please create an event first.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    await insertTasksForEvent(targetEventId, tasks);
+
+    toast({
+      title: 'Tasks created',
+      description: `${tasks.length} task(s) have been added to the event.`,
+    });
+  };
+
+  const handleEventSpecificAITasksInsert = async (eventId: string, tasks: AITask[]) => {
+    if (!eventId) return;
+    await insertTasksForEvent(eventId, tasks);
+    toast({
+      title: 'Tasks created',
+      description: `${tasks.length} task(s) have been added to the event.`,
+    });
+  };
+
   const createEventMutation = useMutation({
-    mutationFn: async (data: any) => {
-      return await apiRequest('POST', '/api/events', data);
+    mutationFn: async (data: CreateEventInput) => {
+      return await apiRequest<ClubEvent>('POST', '/api/events', data);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/events'] });
@@ -43,6 +143,72 @@ export default function Events() {
       toast({
         title: 'Event created',
         description: 'The event has been created successfully.',
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: 'Unable to create event',
+        description: error.message,
+        variant: 'destructive',
+      });
+    },
+  });
+
+  const updateEventMutation = useMutation({
+    mutationFn: async ({ id, data }: { id: string; data: CreateEventInput }) => {
+      return await apiRequest<ClubEvent>('PATCH', `/api/events/${id}`, data);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/events'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/dashboard/stats'] });
+      setOpen(false);
+      resetForm();
+      setEditingEvent(null);
+      toast({
+        title: 'Event updated',
+        description: 'The event has been updated successfully.',
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: 'Unable to update event',
+        description: error.message,
+        variant: 'destructive',
+      });
+    },
+  });
+
+  const deleteEventMutation = useMutation({
+    mutationFn: async (id: string) => {
+      return await apiRequest<{ message: string }>('DELETE', `/api/events/${id}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/events'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/dashboard/stats'] });
+      toast({ title: 'Event deleted' });
+    },
+    onError: (error: any) => {
+      toast({
+        title: 'Unable to delete event',
+        description: error.message,
+        variant: 'destructive',
+      });
+    },
+  });
+
+  const handleStatusChange = useMutation({
+    mutationFn: async ({ id, status }: { id: string; status: ClubEvent['status'] }) => {
+      return await apiRequest<ClubEvent>('PATCH', `/api/events/${id}`, { status });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/events'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/dashboard/stats'] });
+    },
+    onError: (error: any) => {
+      toast({
+        title: 'Unable to update status',
+        description: error.message,
+        variant: 'destructive',
       });
     },
   });
@@ -55,15 +221,37 @@ export default function Events() {
     setStatus('Planning');
   };
 
+  const openCreateDialog = () => {
+    resetForm();
+    setEditingEvent(null);
+    setOpen(true);
+  };
+
+  const openEditDialog = (event: ClubEvent) => {
+    setEditingEvent(event);
+    setTitle(event.title);
+    setDescription(event.description ?? '');
+    setDate(new Date(event.date).toISOString().slice(0, 16));
+    setBudget(event.budget ? parseFloat(event.budget).toString() : '');
+    setStatus(event.status);
+    setOpen(true);
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    createEventMutation.mutate({
+    const payload: CreateEventInput = {
       title,
       description: description || undefined,
       date: new Date(date).toISOString(),
       budget: budget ? parseFloat(budget) : undefined,
       status,
-    });
+    };
+
+    if (editingEvent) {
+      updateEventMutation.mutate({ id: editingEvent.id, data: payload });
+    } else {
+      createEventMutation.mutate(payload);
+    }
   };
 
   if (isLoading) {
@@ -83,16 +271,33 @@ export default function Events() {
     <div className="p-8">
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-3xl font-semibold">Events</h1>
-        <Dialog open={open} onOpenChange={setOpen}>
-          <DialogTrigger asChild>
-            <Button data-testid="button-create-event">
-              <Plus className="h-4 w-4 mr-2" />
-              Create Event
-            </Button>
-          </DialogTrigger>
-          <DialogContent>
+        <div className="flex items-center gap-2">
+          <AIAssistant
+            eventId={editingEvent?.id}
+            onTasksInsert={handleAITasksInsert}
+            triggerButton={
+              <Button variant="outline" className="gap-2">
+                <Sparkles className="h-4 w-4" />
+                Generate with AI
+              </Button>
+            }
+          />
+          <Dialog open={open} onOpenChange={(value) => {
+            if (!value) {
+              setEditingEvent(null);
+              resetForm();
+            }
+            setOpen(value);
+          }}>
+            <DialogTrigger asChild>
+              <Button onClick={openCreateDialog} data-testid="button-create-event">
+                <Plus className="h-4 w-4 mr-2" />
+                Create Event
+              </Button>
+            </DialogTrigger>
+            <DialogContent>
             <DialogHeader>
-              <DialogTitle>Create New Event</DialogTitle>
+              <DialogTitle>{editingEvent ? 'Edit Event' : 'Create New Event'}</DialogTitle>
             </DialogHeader>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-2">
@@ -158,12 +363,13 @@ export default function Events() {
                 </Select>
               </div>
 
-              <Button type="submit" className="w-full" disabled={createEventMutation.isPending} data-testid="button-submit-event">
-                {createEventMutation.isPending ? 'Creating...' : 'Create Event'}
+              <Button type="submit" className="w-full" disabled={createEventMutation.isPending || updateEventMutation.isPending} data-testid="button-submit-event">
+                {editingEvent ? (updateEventMutation.isPending ? 'Saving...' : 'Save Changes') : createEventMutation.isPending ? 'Creating...' : 'Create Event'}
               </Button>
             </form>
-          </DialogContent>
-        </Dialog>
+            </DialogContent>
+          </Dialog>
+        </div>
       </div>
 
       <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -174,12 +380,58 @@ export default function Events() {
             </CardContent>
           </Card>
         ) : (
-          events.map((event: any) => (
+          events.map((event: ClubEvent) => (
             <Card key={event.id} className="hover-elevate" data-testid={`card-event-${event.id}`}>
               <CardHeader>
-                <div className="flex items-start justify-between">
-                  <CardTitle className="text-lg">{event.title}</CardTitle>
-                  <StatusBadge status={event.status} />
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div className="min-w-[200px]">
+                    <CardTitle className="text-lg">{event.title}</CardTitle>
+                    <p className="text-xs text-muted-foreground">Created {new Date(event.createdAt ?? event.date).toLocaleDateString()}</p>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-2 justify-end">
+                    <StatusBadge status={event.status} />
+                    <Select
+                      value={event.status}
+                      onValueChange={(value) => handleStatusChange.mutate({ id: event.id, status: value as ClubEvent['status'] })}
+                    >
+                      <SelectTrigger className="w-32" data-testid={`select-event-status-${event.id}`}>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Planning">Planning</SelectItem>
+                        <SelectItem value="Ongoing">Ongoing</SelectItem>
+                        <SelectItem value="Completed">Completed</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <EventAITaskGenerator event={event} onTasksInsert={handleEventSpecificAITasksInsert} />
+                    <Button variant="outline" size="sm" className="gap-2" onClick={() => openEditDialog(event)} data-testid={`button-edit-event-${event.id}`}>
+                      <Pencil className="h-4 w-4" /> Edit
+                    </Button>
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button variant="outline" size="sm" className="gap-2 text-destructive border-destructive" data-testid={`button-delete-event-${event.id}`}>
+                          <Trash2 className="h-4 w-4" /> Delete
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Delete this event?</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            This action cannot be undone and will remove all assigned tasks references.
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Cancel</AlertDialogCancel>
+                          <AlertDialogAction
+                            onClick={() => deleteEventMutation.mutate(event.id)}
+                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                          >
+                            Confirm Delete
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
+                  </div>
                 </div>
               </CardHeader>
               <CardContent className="space-y-3">
@@ -193,13 +445,7 @@ export default function Events() {
                 {event.budget && (
                   <div className="flex items-center gap-2 text-sm text-muted-foreground">
                     <DollarSign className="h-4 w-4" />
-                    <span>${parseFloat(event.budget).toFixed(2)}</span>
-                  </div>
-                )}
-                {event.assignedTo && (
-                  <div className="flex items-center gap-2 text-sm">
-                    <User className="h-4 w-4 text-muted-foreground" />
-                    <Badge variant="outline">{event.assignedTo.name}</Badge>
+                    <span>₹{parseFloat(event.budget).toFixed(2)}</span>
                   </div>
                 )}
               </CardContent>

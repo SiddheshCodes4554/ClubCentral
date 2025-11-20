@@ -81,9 +81,19 @@ export default {
           busy: "rgb(239 68 68)",
           offline: "rgb(156 163 175)",
         },
+        // ClubCentral brand colors
+        brand: {
+          "royal-blue": "#4263EB",
+          "indigo": "#4C6EF5",
+          "electric-teal": "#0BA5E9",
+          "mint-green": "#3DD9B6",
+          "sky-blue": "#A4D8FF",
+          "charcoal": "#1F2937",
+          "cool-gray": "#6B7280",
+        },
       },
       fontFamily: {
-        sans: ["Inter", "sans-serif"],
+        sans: ["Inter", "Manrope", "SF Pro", "Poppins", "Montserrat", "sans-serif"],
         serif: ["Georgia", "serif"],
         mono: ["Roboto Mono", "SF Mono", "Menlo", "monospace"],
       },
@@ -96,10 +106,48 @@ export default {
           from: { height: "var(--radix-accordion-content-height)" },
           to: { height: "0" },
         },
+        "fade-up": {
+          "0%": { opacity: "0", transform: "translateY(20px)" },
+          "100%": { opacity: "1", transform: "translateY(0)" },
+        },
+        "fade-in": {
+          "0%": { opacity: "0" },
+          "100%": { opacity: "1" },
+        },
+        "float": {
+          "0%, 100%": { transform: "translateY(0px)" },
+          "50%": { transform: "translateY(-20px)" },
+        },
+        "glow": {
+          "0%, 100%": { boxShadow: "0 0 20px rgba(66, 99, 235, 0.5)" },
+          "50%": { boxShadow: "0 0 30px rgba(66, 99, 235, 0.8)" },
+        },
+        "pulse-glow": {
+          "0%, 100%": { opacity: "1" },
+          "50%": { opacity: "0.8" },
+        },
+        "shimmer": {
+          "0%": { backgroundPosition: "-1000px 0" },
+          "100%": { backgroundPosition: "1000px 0" },
+        },
+        "gradient-shift": {
+          "0%, 100%": { backgroundPosition: "0% 50%" },
+          "50%": { backgroundPosition: "100% 50%" },
+        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
         "accordion-up": "accordion-up 0.2s ease-out",
+        "fade-up": "fade-up 0.6s ease-out",
+        "fade-in": "fade-in 0.6s ease-out",
+        "float": "float 6s ease-in-out infinite",
+        "glow": "glow 2s ease-in-out infinite",
+        "pulse-glow": "pulse-glow 2s ease-in-out infinite",
+        "shimmer": "shimmer 3s linear infinite",
+        "gradient-shift": "gradient-shift 8s ease infinite",
+      },
+      perspective: {
+        "1000": "1000px",
       },
     },
   },

@@ -1,0 +1,57 @@
+{
+  "tech_stack": [
+    "TypeScript",
+    "React 18",
+    "Express.js",
+    "Vite",
+    "Drizzle ORM",
+    "PostgreSQL",
+    "Tailwind CSS"
+  ],
+  "features": [
+    {
+      "name": "Express API & Server Bootstrap",
+      "description": "Central Express entry point registers routes, injects Vite middleware during development, and serves the unified API plus client bundle on the configured port.",
+      "files": [
+        "server/index.ts",
+        "server/routes.ts",
+        "server/vite.ts"
+      ]
+    },
+    {
+      "name": "Shared Database Schema & Permissions",
+      "description": "Drizzle ORM schema definitions and shared permission constants describe clubs, institutions, and role capabilities for both backend and frontend logic.",
+      "files": [
+        "shared/schema.ts",
+        "shared/permissions.ts"
+      ]
+    },
+    {
+      "name": "Authentication Context & Protected Routes",
+      "description": "React context providers, hooks, and route guards manage JWT-based user sessions, exposing helpers for client components to gate access.",
+      "files": [
+        "client/src/lib/auth.tsx",
+        "client/src/components/ProtectedRoute.tsx"
+      ]
+    },
+    {
+      "name": "Dashboard & App Shell",
+      "description": "High-level application shell configures navigation, sidebar layout, and page routing across dashboard areas with TanStack Query integration.",
+      "files": [
+        "client/src/App.tsx",
+        "client/src/components/app-sidebar.tsx",
+        "client/src/lib/queryClient.ts"
+      ]
+    },
+    {
+      "name": "Marketing Landing Page",
+      "description": "Feature-rich landing page implements animations, product highlights, and CTA sections using Tailwind CSS, Framer Motion, and reusable UI primitives.",
+      "files": [
+        "client/src/pages/Landing.tsx",
+        "client/src/components/ui",
+        "client/src/index.css"
+      ]
+    }
+  ]
+}
+

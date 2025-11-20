@@ -1,0 +1,470 @@
+[
+  {
+    "id": "TC001",
+    "title": "User Signup and Club Creation with President Role Assignment",
+    "description": "Verify that a new user can successfully sign up, create a club, and is assigned the president role automatically.",
+    "category": "functional",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to the signup page."
+      },
+      {
+        "type": "action",
+        "description": "Enter valid user details and submit the signup form."
+      },
+      {
+        "type": "assertion",
+        "description": "Check that the user account is created and club creation flow is initiated."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify that the new club is created in the system."
+      },
+      {
+        "type": "assertion",
+        "description": "Confirm the user is assigned the president role for the newly created club."
+      }
+    ]
+  },
+  {
+    "id": "TC002",
+    "title": "Member Application via Club Code and Approval Workflow",
+    "description": "Validate that prospective members can apply for club membership using a unique club code and that presidents or vice-presidents can approve or reject applications with proper notifications.",
+    "category": "functional",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to the member application page."
+      },
+      {
+        "type": "action",
+        "description": "Enter a valid club code and applicant details."
+      },
+      {
+        "type": "action",
+        "description": "Submit the membership application."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify application is recorded and notification is sent to the club's president/vice-president."
+      },
+      {
+        "type": "action",
+        "description": "Login as president or vice-president and navigate to membership requests."
+      },
+      {
+        "type": "action",
+        "description": "Approve the membership application."
+      },
+      {
+        "type": "assertion",
+        "description": "Confirm the applicant's status changes to approved and notification is sent to the applicant."
+      },
+      {
+        "type": "action",
+        "description": "Attempt to apply with an invalid or expired club code."
+      },
+      {
+        "type": "assertion",
+        "description": "Ensure application fails and appropriate error message is displayed."
+      }
+    ]
+  },
+  {
+    "id": "TC003",
+    "title": "Role-Based Access Control Enforcement",
+    "description": "Ensure that role-based permissions enforce access and UI gating correctly for different user roles such as president, vice-president, member, and guest.",
+    "category": "security",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Login as a user with president role."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify access to all president-only and shared club management features."
+      },
+      {
+        "type": "action",
+        "description": "Login as a user with vice-president role."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify access to vice-president permitted features and denied access to president-only functions."
+      },
+      {
+        "type": "action",
+        "description": "Login as a regular member."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify access is restricted according to member permissions and UI elements for restricted areas are hidden or disabled."
+      },
+      {
+        "type": "action",
+        "description": "Attempt to access restricted API endpoints with insufficient permissions."
+      },
+      {
+        "type": "assertion",
+        "description": "Confirm access is denied and proper error responses are returned."
+      }
+    ]
+  },
+  {
+    "id": "TC004",
+    "title": "Event Creation, Status Management, and Budget Planning",
+    "description": "Test event creation flow including input validation, status tracking, budget planning, and event editing capabilities.",
+    "category": "functional",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Login as a user with event creation permission."
+      },
+      {
+        "type": "action",
+        "description": "Navigate to event management section and create a new event with mandatory fields and budget."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the event is created successfully with status set as planned."
+      },
+      {
+        "type": "action",
+        "description": "Edit the event to update its status to in-progress and adjust the budget."
+      },
+      {
+        "type": "assertion",
+        "description": "Confirm status and budget changes are reflected correctly."
+      },
+      {
+        "type": "action",
+        "description": "Attempt to create an event with missing required information."
+      },
+      {
+        "type": "assertion",
+        "description": "Ensure validation errors are displayed preventing event creation."
+      }
+    ]
+  },
+  {
+    "id": "TC005",
+    "title": "AI-Powered Task Generation and Suggestions for Events",
+    "description": "Validate AI task generation for events, ensuring the system requires valid API keys and generates relevant and meaningful tasks.",
+    "category": "functional",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Login and create or select an event for AI task generation."
+      },
+      {
+        "type": "action",
+        "description": "Trigger AI task generation with valid Groq and Google Gemini API keys."
+      },
+      {
+        "type": "assertion",
+        "description": "Check that AI generates relevant task suggestions associated with the event."
+      },
+      {
+        "type": "action",
+        "description": "Attempt AI task generation without valid API keys."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify system blocks task generation and returns an appropriate error message."
+      }
+    ]
+  },
+  {
+    "id": "TC006",
+    "title": "Task Management: Creation, Assignment, Lifecycle Tracking",
+    "description": "Ensure tasks can be created, assigned to members or teams, edited, and tracked through all lifecycle statuses.",
+    "category": "functional",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to task management section."
+      },
+      {
+        "type": "action",
+        "description": "Create new tasks with all required fields including assignee (member or team) and due dates."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify tasks appear in the assigned user or team task list."
+      },
+      {
+        "type": "action",
+        "description": "Update task statuses through stages: pending, in-progress, completed."
+      },
+      {
+        "type": "assertion",
+        "description": "Confirm task lifecycle status updates correctly and triggers any relevant notifications."
+      },
+      {
+        "type": "action",
+        "description": "Attempt to assign a task to a non-existent member or team."
+      },
+      {
+        "type": "assertion",
+        "description": "Ensure task assignment is rejected with clear error messages."
+      }
+    ]
+  },
+  {
+    "id": "TC007",
+    "title": "Financial Transaction Tracking with Approvals and Receipt Uploads",
+    "description": "Validate that financial transactions can be added with receipt uploads, approval workflows function, and data can be exported.",
+    "category": "functional",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Login as a user authorized to add financial transactions."
+      },
+      {
+        "type": "action",
+        "description": "Add a financial transaction including required fields and upload a digital receipt."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the transaction is saved with receipt link accessible."
+      },
+      {
+        "type": "action",
+        "description": "Submit the transaction for approval."
+      },
+      {
+        "type": "action",
+        "description": "Login as an authorized approver and approve the submitted transaction."
+      },
+      {
+        "type": "assertion",
+        "description": "Confirm status changes to approved and notifications are sent."
+      },
+      {
+        "type": "action",
+        "description": "Export the financial transactions report."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify export file downloads correctly and contains accurate data."
+      },
+      {
+        "type": "action",
+        "description": "Attempt an unauthorized user to add or approve transactions."
+      },
+      {
+        "type": "assertion",
+        "description": "Confirm access is denied and error messages are displayed."
+      }
+    ]
+  },
+  {
+    "id": "TC008",
+    "title": "Social Media Post Creation, Scheduling, Multi-Platform Posting, and Status Tracking",
+    "description": "Test the workflow for creating social media content, scheduling posts for publication across multiple platforms, and verifying status updates and monitoring.",
+    "category": "functional",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to social media management module."
+      },
+      {
+        "type": "action",
+        "description": "Create a new social media post with content and select target platforms."
+      },
+      {
+        "type": "action",
+        "description": "Schedule the post for a future date and time."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify post appears in the schedule with correct platforms and status as pending."
+      },
+      {
+        "type": "action",
+        "description": "Simulate passage of scheduled time or trigger immediate posting."
+      },
+      {
+        "type": "assertion",
+        "description": "Confirm post is published successfully on all selected platforms and status updates to posted."
+      },
+      {
+        "type": "action",
+        "description": "Attempt to schedule a post with invalid or missing content."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify validation errors prevent scheduling."
+      }
+    ]
+  },
+  {
+    "id": "TC009",
+    "title": "Institution Mode: Multi-Club Management, Analytics, Department Organization, Reporting",
+    "description": "Verify that institution mode users can create and manage multiple clubs, organize departments, view analytics, and generate centralized reports.",
+    "category": "functional",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Login as an institution administrator."
+      },
+      {
+        "type": "action",
+        "description": "Create multiple clubs under the institution entity."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify clubs are created and listed under institution control."
+      },
+      {
+        "type": "action",
+        "description": "Organize clubs into departments."
+      },
+      {
+        "type": "assertion",
+        "description": "Confirm department organization reflects correctly in UI and data."
+      },
+      {
+        "type": "action",
+        "description": "Access analytics dashboard showing multi-club aggregated data."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify analytics data is accurate and up to date."
+      },
+      {
+        "type": "action",
+        "description": "Generate and export reports summarizing club activities and metrics."
+      },
+      {
+        "type": "assertion",
+        "description": "Confirm reports contain expected information and export correctly."
+      }
+    ]
+  },
+  {
+    "id": "TC010",
+    "title": "Authentication and Session Management with JWT Token Validation and Expiry Handling",
+    "description": "Test the authentication system ensuring secure login, JWT session management with correct token validation, expiry, and renewal.",
+    "category": "security",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Attempt login with valid credentials."
+      },
+      {
+        "type": "assertion",
+        "description": "Confirm successful authentication and receipt of valid JWT token."
+      },
+      {
+        "type": "action",
+        "description": "Access protected routes with valid token."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify access granted and data returned correctly."
+      },
+      {
+        "type": "action",
+        "description": "Simulate token expiry by using an expired JWT token."
+      },
+      {
+        "type": "assertion",
+        "description": "Confirm access is denied and user is prompted for re-authentication."
+      },
+      {
+        "type": "action",
+        "description": "Attempt login with invalid credentials."
+      },
+      {
+        "type": "assertion",
+        "description": "Ensure login fails with appropriate error message and no token issued."
+      }
+    ]
+  },
+  {
+    "id": "TC011",
+    "title": "Frontend UI Responsiveness and Accessibility Across Devices",
+    "description": "Validate that the ClubCentral UI is responsive and accessible across different devices and screen sizes, meeting modern accessibility standards.",
+    "category": "ui",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Open the application dashboard page in desktop, tablet, and mobile screen resolutions."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify UI components resize and rearrange correctly without content overlap or cutoff."
+      },
+      {
+        "type": "action",
+        "description": "Use keyboard navigation to access all interactive elements."
+      },
+      {
+        "type": "assertion",
+        "description": "Confirm all controls are accessible and focus is handled correctly."
+      },
+      {
+        "type": "action",
+        "description": "Run accessibility audit tools to check color contrast, ARIA labels, and semantic markup."
+      },
+      {
+        "type": "assertion",
+        "description": "Ensure no critical accessibility violations are present."
+      }
+    ]
+  },
+  {
+    "id": "TC012",
+    "title": "Backend API Endpoint Authentication, Authorization, and Error Handling",
+    "description": "Test that all backend API endpoints enforce authentication, authorization per user role, and handle errors gracefully with appropriate status codes and messages.",
+    "category": "error handling",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Call protected API endpoints without authentication token."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify 401 Unauthorized status is returned."
+      },
+      {
+        "type": "action",
+        "description": "Call endpoints with valid token but insufficient permissions."
+      },
+      {
+        "type": "assertion",
+        "description": "Ensure 403 Forbidden status is returned."
+      },
+      {
+        "type": "action",
+        "description": "Make API requests with malformed or missing required parameters."
+      },
+      {
+        "type": "assertion",
+        "description": "Confirm 400 Bad Request status with descriptive error messages."
+      },
+      {
+        "type": "action",
+        "description": "Simulate server-side errors such as database failure."
+      },
+      {
+        "type": "assertion",
+        "description": "Check API returns 500 Internal Server Error with generic error message."
+      }
+    ]
+  }
+]

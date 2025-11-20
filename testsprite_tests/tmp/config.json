@@ -1,0 +1,16 @@
+{
+  "status": "commited",
+  "type": "frontend",
+  "scope": "codebase",
+  "localEndpoint": "http://localhost:5000",
+  "executionArgs": {
+    "projectName": "ClubCentral_02",
+    "projectPath": "D:\\ClubCentral_02",
+    "testIds": [],
+    "additionalInstruction": "",
+    "envs": {
+      "API_KEY": "sk-user-dFAGc08uc63gvyPTVqTFdmw6PtA8h8lkyLmOZMkt8KBP2ugGwzNQQ6qUWaxdyUc4MnEssXXoFj46vRI6DSk5ereCTrysvcTiZpAO5iSKScXbMmRT6gte942natDhXuyi6Js"
+    }
+  },
+  "proxy": "http://bf91e61c-04ae-48bc-b361-d347d529062b:BfA9wrpQwRKFZa2Cxzi4EGxo8q5GhUIa@tun.testsprite.com:8080"
+}

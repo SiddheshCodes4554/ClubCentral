@@ -6,7 +6,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider, useAuth } from "@/lib/auth";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/app-sidebar";
-import { ProtectedRoute } from "@/components/ProtectedRoute";
+import { ProtectedRoute, InstitutionProtectedRoute } from "@/components/ProtectedRoute";
 
 import Login from "@/pages/Login";
 import Signup from "@/pages/Signup";
@@ -21,9 +21,22 @@ import Finance from "@/pages/Finance";
 import Social from "@/pages/Social";
 import Settings from "@/pages/Settings";
 import NotFound from "@/pages/not-found";
+import Committee from "@/pages/Committee";
+import Teams from "@/pages/Teams";
+import Permissions from "@/pages/Permissions";
+import Landing from "@/pages/Landing";
+import InstitutionOnboarding from "@/pages/institution/Onboarding";
+import InstitutionDashboard from "@/pages/institution/Dashboard";
+import InstitutionClubs from "@/pages/institution/Clubs";
+import InstitutionFinance from "@/pages/institution/Finance";
+import InstitutionMembers from "@/pages/institution/Members";
+import InstitutionAnalytics from "@/pages/institution/Analytics";
+import InstitutionReports from "@/pages/institution/Reports";
+import InstitutionElections from "@/pages/institution/Elections";
+import VotePage from "@/pages/Vote";
 
 function AppRoutes() {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, user } = useAuth();
 
   return (
     <Switch>
@@ -36,7 +49,63 @@ function AppRoutes() {
       <Route path="/apply/:clubCode" component={Apply} />
 
       <Route path="/">
-        <Redirect to={isAuthenticated ? "/dashboard" : "/login"} />
+        {isAuthenticated ? (
+          <Redirect to={user?.kind === 'institution' ? '/institution/dashboard' : '/dashboard'} />
+        ) : (
+          <Landing />
+        )}
+      </Route>
+
+      <Route path="/vote/:accessCode" component={VotePage} />
+
+      <Route path="/institution/onboarding">
+        {isAuthenticated && user?.kind === 'institution' ? (
+          <Redirect to="/institution/dashboard" />
+        ) : (
+          <InstitutionOnboarding />
+        )}
+      </Route>
+
+      <Route path="/institution/dashboard">
+        <InstitutionProtectedRoute>
+          <InstitutionDashboard />
+        </InstitutionProtectedRoute>
+      </Route>
+
+      <Route path="/institution/clubs">
+        <InstitutionProtectedRoute>
+          <InstitutionClubs />
+        </InstitutionProtectedRoute>
+      </Route>
+
+      <Route path="/institution/elections">
+        <InstitutionProtectedRoute>
+          <InstitutionElections />
+        </InstitutionProtectedRoute>
+      </Route>
+
+      <Route path="/institution/finance">
+        <InstitutionProtectedRoute>
+          <InstitutionFinance />
+        </InstitutionProtectedRoute>
+      </Route>
+
+      <Route path="/institution/members">
+        <InstitutionProtectedRoute>
+          <InstitutionMembers />
+        </InstitutionProtectedRoute>
+      </Route>
+
+      <Route path="/institution/analytics">
+        <InstitutionProtectedRoute>
+          <InstitutionAnalytics />
+        </InstitutionProtectedRoute>
+      </Route>
+
+      <Route path="/institution/reports">
+        <InstitutionProtectedRoute>
+          <InstitutionReports />
+        </InstitutionProtectedRoute>
       </Route>
 
       <Route path="/dashboard">
@@ -54,6 +123,12 @@ function AppRoutes() {
       <Route path="/members">
         <ProtectedRoute>
           <Members />
+        </ProtectedRoute>
+      </Route>
+
+      <Route path="/teams">
+        <ProtectedRoute>
+          <Teams />
         </ProtectedRoute>
       </Route>
 
@@ -87,9 +162,21 @@ function AppRoutes() {
         </ProtectedRoute>
       </Route>
 
+      <Route path="/committee">
+        <ProtectedRoute requiredRoles={['President', 'Vice-President']}>
+          <Committee />
+        </ProtectedRoute>
+      </Route>
+
       <Route path="/settings">
         <ProtectedRoute requiredRoles={['President']}>
           <Settings />
+        </ProtectedRoute>
+      </Route>
+
+      <Route path="/permissions">
+        <ProtectedRoute>
+          <Permissions />
         </ProtectedRoute>
       </Route>
 

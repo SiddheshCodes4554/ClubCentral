@@ -8,12 +8,22 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { useToast } from '@/hooks/use-toast';
-import { Plus, TrendingUp, TrendingDown, CheckCircle } from 'lucide-react';
+import { Plus, TrendingUp, TrendingDown, CheckCircle, Pencil, Trash2 } from 'lucide-react';
 import { StatusBadge } from '@/components/StatusBadge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import type { Finance as FinanceEntry } from '@shared/schema';
+import { hasPermission } from '@/lib/permissions';
+
+interface CreateFinanceInput {
+  transactionName: string;
+  type: FinanceEntry['type'];
+  amount: string;
+  receiptUrl?: string;
+}
 
 export default function Finance() {
   const { user } = useAuth();
@@ -22,31 +32,41 @@ export default function Finance() {
   const [type, setType] = useState('expense');
   const [amount, setAmount] = useState('');
   const [receiptUrl, setReceiptUrl] = useState('');
+  const [statusValue, setStatusValue] = useState<'Pending' | 'Approved'>('Pending');
+  const [editingEntry, setEditingEntry] = useState<FinanceEntry | null>(null);
   const { toast } = useToast();
 
-  const { data: transactions, isLoading } = useQuery({
+  if (!user || user.kind !== 'club') {
+    return null;
+  }
+
+  const { data: transactions = [], isLoading } = useQuery<FinanceEntry[]>({
     queryKey: ['/api/finance'],
   });
 
   const createTransactionMutation = useMutation({
-    mutationFn: async (data: any) => {
-      return await apiRequest('POST', '/api/finance', data);
+    mutationFn: async (data: CreateFinanceInput) => {
+      return await apiRequest<FinanceEntry>('POST', '/api/finance', data);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/finance'] });
       queryClient.invalidateQueries({ queryKey: ['/api/dashboard/stats'] });
       setOpen(false);
       resetForm();
+      setEditingEntry(null);
       toast({
         title: 'Transaction added',
         description: 'The financial entry has been created successfully.',
       });
     },
+    onError: (error: any) => {
+      toast({ title: 'Unable to add transaction', description: error.message, variant: 'destructive' });
+    },
   });
 
   const approveTransactionMutation = useMutation({
     mutationFn: async (id: string) => {
-      return await apiRequest('PATCH', `/api/finance/${id}/approve`, {});
+      return await apiRequest<FinanceEntry>('PATCH', `/api/finance/${id}/approve`, {});
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/finance'] });
@@ -56,6 +76,40 @@ export default function Finance() {
         description: 'The transaction has been approved.',
       });
     },
+    onError: (error: any) => {
+      toast({ title: 'Unable to approve transaction', description: error.message, variant: 'destructive' });
+    },
+  });
+
+  const updateTransactionMutation = useMutation({
+    mutationFn: async ({ id, data }: { id: string; data: CreateFinanceInput & { status?: string } }) => {
+      return await apiRequest<FinanceEntry>('PATCH', `/api/finance/${id}`, data);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/finance'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/dashboard/stats'] });
+      setOpen(false);
+      resetForm();
+      setEditingEntry(null);
+      toast({ title: 'Transaction updated' });
+    },
+    onError: (error: any) => {
+      toast({ title: 'Unable to update transaction', description: error.message, variant: 'destructive' });
+    },
+  });
+
+  const deleteTransactionMutation = useMutation({
+    mutationFn: async (id: string) => {
+      return await apiRequest<{ message: string }>('DELETE', `/api/finance/${id}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/finance'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/dashboard/stats'] });
+      toast({ title: 'Transaction deleted' });
+    },
+    onError: (error: any) => {
+      toast({ title: 'Unable to delete transaction', description: error.message, variant: 'destructive' });
+    },
   });
 
   const resetForm = () => {
@@ -63,26 +117,58 @@ export default function Finance() {
     setType('expense');
     setAmount('');
     setReceiptUrl('');
+    setStatusValue('Pending');
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    createTransactionMutation.mutate({
+    const payload: CreateFinanceInput & { status?: string } = {
       transactionName,
       type,
-      amount: parseFloat(amount),
+      amount,
       receiptUrl: receiptUrl || undefined,
-    });
+    };
+
+    if (editingEntry) {
+      updateTransactionMutation.mutate({ id: editingEntry.id, data: { ...payload, status: statusValue } });
+    } else {
+      createTransactionMutation.mutate(payload);
+    }
   };
 
-  const isAdmin = user?.isPresident || user?.role === 'Vice-President';
+  const openCreateDialog = () => {
+    resetForm();
+    setEditingEntry(null);
+    setOpen(true);
+  };
 
-  const totalIncome = transactions?.filter((t: any) => t.type === 'income' && t.status === 'Approved')
-    .reduce((sum: number, t: any) => sum + parseFloat(t.amount), 0) || 0;
-  
-  const totalExpense = transactions?.filter((t: any) => t.type === 'expense' && t.status === 'Approved')
-    .reduce((sum: number, t: any) => sum + parseFloat(t.amount), 0) || 0;
-  
+  const openEditDialog = (entry: FinanceEntry) => {
+    setEditingEntry(entry);
+    setTransactionName(entry.transactionName);
+    setType(entry.type);
+    setAmount(entry.amount.toString());
+    setReceiptUrl(entry.receiptUrl ?? '');
+    setStatusValue(entry.status as 'Pending' | 'Approved');
+    setOpen(true);
+  };
+
+  const closeDialog = () => {
+    setOpen(false);
+    setEditingEntry(null);
+    resetForm();
+  };
+
+  const canApprove = user?.permissions && hasPermission(user.permissions, 'approve_finance');
+  const canManage = user?.permissions && hasPermission(user.permissions, 'manage_finance');
+
+  const totalIncome = transactions
+    .filter((t) => t.type === 'income' && t.status === 'Approved')
+    .reduce((sum, t) => sum + parseFloat(t.amount), 0);
+
+  const totalExpense = transactions
+    .filter((t) => t.type === 'expense' && t.status === 'Approved')
+    .reduce((sum, t) => sum + parseFloat(t.amount), 0);
+
   const balance = totalIncome - totalExpense;
 
   if (isLoading) {
@@ -103,16 +189,22 @@ export default function Finance() {
     <div className="p-8">
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-3xl font-semibold">Finance</h1>
-        <Dialog open={open} onOpenChange={setOpen}>
+        <Dialog open={open} onOpenChange={(value) => {
+          if (!value) {
+            closeDialog();
+          } else {
+            setOpen(true);
+          }
+        }}>
           <DialogTrigger asChild>
-            <Button data-testid="button-add-transaction">
+            <Button onClick={openCreateDialog} data-testid="button-add-transaction">
               <Plus className="h-4 w-4 mr-2" />
               Add Transaction
             </Button>
           </DialogTrigger>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>Add Financial Transaction</DialogTitle>
+              <DialogTitle>{editingEntry ? 'Edit Financial Transaction' : 'Add Financial Transaction'}</DialogTitle>
             </DialogHeader>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-2">
@@ -166,8 +258,29 @@ export default function Finance() {
                 />
               </div>
 
-              <Button type="submit" className="w-full" disabled={createTransactionMutation.isPending} data-testid="button-submit-transaction">
-                {createTransactionMutation.isPending ? 'Adding...' : 'Add Transaction'}
+              {editingEntry && (
+                <div className="space-y-2">
+                  <Label htmlFor="statusSelect">Status</Label>
+                  <Select value={statusValue} onValueChange={(value: 'Pending' | 'Approved') => setStatusValue(value)}>
+                    <SelectTrigger id="statusSelect">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Pending">Pending</SelectItem>
+                      <SelectItem value="Approved">Approved</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+
+              <Button type="submit" className="w-full" disabled={createTransactionMutation.isPending || updateTransactionMutation.isPending} data-testid="button-submit-transaction">
+                {editingEntry
+                  ? updateTransactionMutation.isPending
+                    ? 'Saving...'
+                    : 'Save Changes'
+                  : createTransactionMutation.isPending
+                  ? 'Adding...'
+                  : 'Add Transaction'}
               </Button>
             </form>
           </DialogContent>
@@ -181,7 +294,7 @@ export default function Finance() {
             <TrendingUp className="h-4 w-4 text-green-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold text-green-600" data-testid="text-total-income">${totalIncome.toFixed(2)}</div>
+            <div className="text-3xl font-bold text-green-600" data-testid="text-total-income">₹{totalIncome.toFixed(2)}</div>
           </CardContent>
         </Card>
 
@@ -191,7 +304,7 @@ export default function Finance() {
             <TrendingDown className="h-4 w-4 text-red-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold text-red-600" data-testid="text-total-expenses">${totalExpense.toFixed(2)}</div>
+            <div className="text-3xl font-bold text-red-600" data-testid="text-total-expenses">₹{totalExpense.toFixed(2)}</div>
           </CardContent>
         </Card>
 
@@ -201,7 +314,7 @@ export default function Finance() {
           </CardHeader>
           <CardContent>
             <div className={`text-3xl font-bold ${balance >= 0 ? 'text-green-600' : 'text-red-600'}`} data-testid="text-balance">
-              ${balance.toFixed(2)}
+              ₹{balance.toFixed(2)}
             </div>
           </CardContent>
         </Card>
@@ -220,18 +333,18 @@ export default function Finance() {
                 <TableHead>Amount</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Date</TableHead>
-                {isAdmin && <TableHead>Action</TableHead>}
+                {(canApprove || canManage) && <TableHead>Action</TableHead>}
               </TableRow>
             </TableHeader>
             <TableBody>
               {!transactions || transactions.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={isAdmin ? 6 : 5} className="text-center text-muted-foreground py-12">
+                  <TableCell colSpan={(canApprove || canManage) ? 6 : 5} className="text-center text-muted-foreground py-12">
                     No transactions yet
                   </TableCell>
                 </TableRow>
               ) : (
-                transactions.map((transaction: any) => (
+                transactions.map((transaction) => (
                   <TableRow key={transaction.id} data-testid={`row-transaction-${transaction.id}`}>
                     <TableCell>
                       <div>
@@ -249,7 +362,7 @@ export default function Finance() {
                       </Badge>
                     </TableCell>
                     <TableCell className={`font-medium ${transaction.type === 'income' ? 'text-green-600' : 'text-red-600'}`}>
-                      ${parseFloat(transaction.amount).toFixed(2)}
+                      ₹{parseFloat(transaction.amount).toFixed(2)}
                     </TableCell>
                     <TableCell>
                       <StatusBadge status={transaction.status} />
@@ -257,21 +370,60 @@ export default function Finance() {
                     <TableCell className="text-sm text-muted-foreground">
                       {new Date(transaction.createdAt).toLocaleDateString()}
                     </TableCell>
-                    {isAdmin && (
+                    {(canApprove || canManage) && (
                       <TableCell>
-                        {transaction.status === 'Pending' && (
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => approveTransactionMutation.mutate(transaction.id)}
-                            disabled={approveTransactionMutation.isPending}
-                            className="gap-2"
-                            data-testid={`button-approve-${transaction.id}`}
-                          >
-                            <CheckCircle className="h-3 w-3" />
-                            Approve
-                          </Button>
-                        )}
+                        <div className="flex items-center gap-2">
+                          {canApprove && transaction.status !== 'Approved' && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="gap-2"
+                              onClick={() => approveTransactionMutation.mutate(transaction.id)}
+                              disabled={approveTransactionMutation.isPending}
+                              data-testid={`button-approve-transaction-${transaction.id}`}
+                            >
+                              <CheckCircle className="h-4 w-4" /> Approve
+                            </Button>
+                          )}
+                          {canManage && (
+                            <>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="gap-2"
+                                onClick={() => openEditDialog(transaction)}
+                              >
+                                <Pencil className="h-4 w-4" /> Edit
+                              </Button>
+                              <AlertDialog>
+                                <AlertDialogTrigger asChild>
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className="gap-2 text-destructive border-destructive"
+                                  >
+                                    <Trash2 className="h-4 w-4" /> Delete
+                                  </Button>
+                                </AlertDialogTrigger>
+                                <AlertDialogContent>
+                                  <AlertDialogHeader>
+                                    <AlertDialogTitle>Delete this transaction?</AlertDialogTitle>
+                                    <AlertDialogDescription>This will remove the financial entry permanently.</AlertDialogDescription>
+                                  </AlertDialogHeader>
+                                  <AlertDialogFooter>
+                                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                    <AlertDialogAction
+                                      className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                      onClick={() => deleteTransactionMutation.mutate(transaction.id)}
+                                    >
+                                      Delete
+                                    </AlertDialogAction>
+                                  </AlertDialogFooter>
+                                </AlertDialogContent>
+                              </AlertDialog>
+                            </>
+                          )}
+                        </div>
                       </TableCell>
                     )}
                   </TableRow>

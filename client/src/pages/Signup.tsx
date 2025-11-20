@@ -1,245 +1,77 @@
-import { useState } from 'react';
-import { useAuth } from '@/lib/auth';
-import { useLocation } from 'wouter';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { useToast } from '@/hooks/use-toast';
-import { Building2, ArrowLeft, ArrowRight } from 'lucide-react';
-import { useMutation } from '@tanstack/react-query';
-import { apiRequest } from '@/lib/queryClient';
-import { Progress } from '@/components/ui/progress';
+import { useLocation } from 'wouter';
+import { ArrowLeft, Shield, Building2, Sparkles, Home } from 'lucide-react';
 
 export default function Signup() {
-  const [step, setStep] = useState(1);
-  const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [clubName, setClubName] = useState('');
-  const [collegeName, setCollegeName] = useState('');
-  const [logoUrl, setLogoUrl] = useState('');
-  const [description, setDescription] = useState('');
-  
-  const { login } = useAuth();
   const [, setLocation] = useLocation();
-  const { toast } = useToast();
-
-  const signupMutation = useMutation({
-    mutationFn: async (data: any) => {
-      return await apiRequest('POST', '/api/auth/register-president', data);
-    },
-    onSuccess: (data) => {
-      login(data.token, data.user);
-      toast({
-        title: 'Club created successfully!',
-        description: `Welcome to ClubCentral, ${data.user.name}!`,
-      });
-      setLocation('/dashboard');
-    },
-    onError: (error: any) => {
-      toast({
-        title: 'Signup failed',
-        description: error.message || 'Could not create club',
-        variant: 'destructive',
-      });
-    },
-  });
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    signupMutation.mutate({
-      name,
-      email,
-      password,
-      clubName,
-      collegeName,
-      logoUrl: logoUrl || undefined,
-      description: description || undefined,
-    });
-  };
-
-  const progress = (step / 3) * 100;
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background p-4">
-      <Card className="w-full max-w-2xl">
-        <CardHeader className="space-y-1">
-          <div className="flex items-center justify-between mb-4">
-            <div className="h-12 w-12 rounded-lg bg-primary flex items-center justify-center">
-              <Building2 className="h-7 w-7 text-primary-foreground" />
+    <div className="min-h-screen flex items-center justify-center bg-background p-6">
+      <Card className="w-full max-w-3xl shadow-xl border-border/80">
+        <CardHeader className="space-y-3 text-center">
+          <div className="flex items-center justify-between">
+            <img src="/Logo.png" alt="Club Central" className="h-12 w-auto object-contain" />
+            <div className="flex gap-2">
+              <Button variant="ghost" size="sm" onClick={() => setLocation('/')}>
+                <Home className="h-4 w-4 mr-2" />
+                Back to main page
+              </Button>
+              <Button variant="ghost" size="sm" onClick={() => setLocation('/login')}>
+                <ArrowLeft className="h-4 w-4 mr-2" />
+                Back to login
+              </Button>
             </div>
-            <Button 
-              variant="ghost" 
-              size="sm" 
-              onClick={() => setLocation('/login')}
-              data-testid="button-back-to-login"
-            >
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              Back to Login
-            </Button>
           </div>
-          <CardTitle className="text-2xl font-semibold">Create Your Club</CardTitle>
-          <CardDescription>
-            Step {step} of 3: {step === 1 ? 'Your Information' : step === 2 ? 'Club Details' : 'Review & Confirm'}
+          <CardTitle className="text-3xl font-semibold">Institution Mode Required</CardTitle>
+          <CardDescription className="text-base">
+            Club creation is now part of the enterprise Institution Mode. Students can no longer create
+            clubs directly—your institution administrator will onboard you.
           </CardDescription>
-          <Progress value={progress} className="mt-4" />
         </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-6">
-            {step === 1 && (
-              <div className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="name">Your Name *</Label>
-                  <Input
-                    id="name"
-                    type="text"
-                    placeholder="John Doe"
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    required
-                    data-testid="input-name"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="email">Your Email *</Label>
-                  <Input
-                    id="email"
-                    type="email"
-                    placeholder="president@college.edu"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    required
-                    data-testid="input-email"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="password">Password *</Label>
-                  <Input
-                    id="password"
-                    type="password"
-                    placeholder="Create a strong password"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    required
-                    minLength={6}
-                    data-testid="input-password"
-                  />
-                </div>
-              </div>
-            )}
-
-            {step === 2 && (
-              <div className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="clubName">Club Name *</Label>
-                  <Input
-                    id="clubName"
-                    type="text"
-                    placeholder="Tech Club"
-                    value={clubName}
-                    onChange={(e) => setClubName(e.target.value)}
-                    required
-                    data-testid="input-club-name"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="collegeName">College/University Name *</Label>
-                  <Input
-                    id="collegeName"
-                    type="text"
-                    placeholder="State University"
-                    value={collegeName}
-                    onChange={(e) => setCollegeName(e.target.value)}
-                    required
-                    data-testid="input-college-name"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="logoUrl">Logo URL (optional)</Label>
-                  <Input
-                    id="logoUrl"
-                    type="url"
-                    placeholder="https://example.com/logo.png"
-                    value={logoUrl}
-                    onChange={(e) => setLogoUrl(e.target.value)}
-                    data-testid="input-logo-url"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="description">Club Description (optional)</Label>
-                  <Textarea
-                    id="description"
-                    placeholder="Tell us about your club..."
-                    value={description}
-                    onChange={(e) => setDescription(e.target.value)}
-                    rows={4}
-                    data-testid="input-description"
-                  />
-                </div>
-              </div>
-            )}
-
-            {step === 3 && (
-              <div className="space-y-4">
-                <div className="bg-muted p-6 rounded-lg space-y-4">
-                  <div>
-                    <h3 className="font-medium text-sm text-muted-foreground mb-1">President</h3>
-                    <p className="font-medium">{name}</p>
-                    <p className="text-sm text-muted-foreground">{email}</p>
-                  </div>
-                  <div className="h-px bg-border" />
-                  <div>
-                    <h3 className="font-medium text-sm text-muted-foreground mb-1">Club</h3>
-                    <p className="font-medium">{clubName}</p>
-                    <p className="text-sm text-muted-foreground">{collegeName}</p>
-                    {description && (
-                      <p className="text-sm text-muted-foreground mt-2">{description}</p>
-                    )}
-                  </div>
-                </div>
-                <p className="text-sm text-muted-foreground">
-                  By creating this club, you'll become the President with full administrative access.
-                  You'll receive a unique club code to invite members.
-                </p>
-              </div>
-            )}
-
-            <div className="flex gap-3">
-              {step > 1 && (
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => setStep(step - 1)}
-                  data-testid="button-previous"
-                >
-                  <ArrowLeft className="h-4 w-4 mr-2" />
-                  Previous
-                </Button>
-              )}
-              {step < 3 ? (
-                <Button
-                  type="button"
-                  onClick={() => setStep(step + 1)}
-                  className="ml-auto"
-                  data-testid="button-next"
-                >
-                  Next
-                  <ArrowRight className="h-4 w-4 ml-2" />
-                </Button>
-              ) : (
-                <Button
-                  type="submit"
-                  disabled={signupMutation.isPending}
-                  className="ml-auto"
-                  data-testid="button-create-club"
-                >
-                  {signupMutation.isPending ? 'Creating Club...' : 'Create Club'}
-                </Button>
-              )}
+        <CardContent className="space-y-8">
+          <div className="grid gap-6 md:grid-cols-3">
+            <div className="rounded-xl border bg-muted/40 p-4">
+              <Shield className="h-6 w-6 text-primary mb-3" />
+              <h3 className="font-semibold mb-1">Verified Institutions Only</h3>
+              <p className="text-sm text-muted-foreground">
+                Clubs are provisioned by Institution Admins to maintain official oversight.
+              </p>
             </div>
-          </form>
+            <div className="rounded-xl border bg-muted/40 p-4">
+              <Building2 className="h-6 w-6 text-primary mb-3" />
+              <h3 className="font-semibold mb-1">Multi-Club Command Center</h3>
+              <p className="text-sm text-muted-foreground">
+                Manage presidents, finance, and events across every club from a single dashboard.
+              </p>
+            </div>
+            <div className="rounded-xl border bg-muted/40 p-4">
+              <Sparkles className="h-6 w-6 text-primary mb-3" />
+              <h3 className="font-semibold mb-1">Premium Analytics</h3>
+              <p className="text-sm text-muted-foreground">
+                Institution dashboards deliver performance scoring, heatmaps, finance insights, and more.
+              </p>
+            </div>
+          </div>
+
+          <div className="rounded-2xl border bg-gradient-to-r from-background via-background to-muted p-6 space-y-4">
+            <h4 className="text-lg font-semibold">How to get started</h4>
+            <ol className="space-y-3 text-sm text-muted-foreground">
+              <li>1. Share this page with your Institution Admin or Student Affairs office.</li>
+              <li>2. They’ll complete the Institution Onboarding and receive the admin console.</li>
+              <li>3. Presidents are invited directly by the Institution Admin with a secure login link.</li>
+              <li>4. Students can then apply using the official club invite code shared by leadership.</li>
+            </ol>
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <p className="text-sm font-medium">
+                Institution ready to launch?
+              </p>
+              <Button onClick={() => setLocation('/institution/onboarding')} className="gap-2">
+                Begin Institution Onboarding
+                <Sparkles className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
         </CardContent>
       </Card>
     </div>
