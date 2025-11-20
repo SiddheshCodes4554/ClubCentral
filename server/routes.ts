@@ -3788,7 +3788,7 @@ Generate 5-8 tasks, 3-5 budget items, 4-6 timeline milestones, and 2-4 team sugg
 
       // Cookie-based tracking
       const cookieName = `vote_token_${accessCode}`;
-      const existingToken = req.cookies[cookieName];
+      const existingToken = req.cookies?.[cookieName];
 
       if (!candidateId || typeof candidateId !== 'string') {
         return res.status(400).json({ message: 'A valid candidate must be selected' });
@@ -3833,11 +3833,12 @@ Generate 5-8 tasks, 3-5 budget items, 4-6 timeline milestones, and 2-4 team sugg
       await storage.incrementCandidateVote(candidateId);
 
       // Set long-lived cookie (1 year)
+      const isProduction = process.env.NODE_ENV === 'production';
       res.cookie(cookieName, voterToken, {
         maxAge: 365 * 24 * 60 * 60 * 1000,
         httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'lax',
+        secure: isProduction,
+        sameSite: isProduction ? 'none' : 'lax',
       });
 
       res.json({ message: 'Vote cast successfully' });
