@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 services:
   - type: web
     name: club-central
@@ -12,3 +13,19 @@ services:
         sync: false
       - key: SESSION_SECRET
         generateValue: true
+=======
+services:
+  - type: web
+    name: club-central
+    env: node
+    plan: free
+    buildCommand: npm install && npm run build
+    startCommand: npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        sync: false
+      - key: SESSION_SECRET
+        generateValue: true
+>>>>>>> 4f1c041dac77d37e12cf6c14df836a8dd6ea401b
